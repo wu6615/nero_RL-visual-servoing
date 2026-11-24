@@ -1,0 +1,105 @@
+<mujoco model="nero_eye_in_hand_dynamic_grasp">
+  <!--
+    World frame == NERO base frame.  The belt runs along base -Y, matching the
+    measured belt_direction_base (-0.05, -1.0, 0) of the conveyor site, on the
+    robot's -X side (site standby TCP at x≈-0.40).  The env overrides belt
+    position/size from the YAML config at load time (see EnvConfig.belt_*).
+  -->
+  <compiler angle="radian" autolimits="true" balanceinertia="true"
+            meshdir="meshes"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="implicitfast"
+          solver="Newton" iterations="50" tolerance="1e-8"
+          cone="elliptic" impratio="5"/>
+
+  <visual>
+    <global offwidth="1280" offheight="800" azimuth="150" elevation="-25"/>
+    <quality shadowsize="2048" offsamples="4"/>
+    <map znear="0.005" zfar="5.0"/>
+    <headlight ambient="0.35 0.35 0.35" diffuse="0.6 0.6 0.6"
+               specular="0.1 0.1 0.1"/>
+  </visual>
+
+  <default>
+    <geom condim="4" friction="0.85 0.01 0.001"
+          solref="0.006 1" solimp="0.90 0.95 0.001"/>
+    <default class="visual_only">
+      <geom contype="0" conaffinity="0" group="2"/>
+    </default>
+    <default class="target">
+      <geom condim="6" friction="1.0 0.02 0.002" solref="0.004 1"
+            solimp="0.94 0.99 0.001" group="0"/>
+    </default>
+  </default>
+
+  <asset>
+    <texture name="floor_tex" type="2d" builtin="checker" width="512"
+             height="512" rgb1="0.16 0.18 0.20" rgb2="0.22 0.24 0.26"/>
+    <material name="floor_mat" texture="floor_tex" texrepeat="5 5"
+              texuniform="true" reflectance="0.05"/>
+    <texture name="belt_tex" type="2d" builtin="checker" width="128"
+             height="512" rgb1="0.055 0.060 0.065" rgb2="0.095 0.100 0.105"/>
+    <material name="belt_mat" texture="belt_tex" texrepeat="2 12"/>
+  </asset>
+
+  <worldbody>
+    <geom name="floor" type="plane" pos="0 0 -0.60" size="3 3 0.1"
+          material="floor_mat"/>
+    <light name="key_light" pos="0.6 0.4 1.2" dir="-0.3 -0.2 -1"
+           diffuse="0.85 0.83 0.78" castshadow="true"/>
+    <light name="fill_light" pos="-0.4 -0.6 1.0" dir="0.2 0.3 -1"
+           diffuse="0.4 0.45 0.5" castshadow="false"/>
+
+    <camera name="overview" mode="fixed" pos="-1.30 0.95 0.50"
+            xyaxes="-0.689 -0.725 0 0.297 -0.282 0.912" fovy="50"/>
+
+    <!-- Robot pedestal (base_link sits at z=0; floor at -0.60).  Counted as an obstacle. -->
+    <geom name="robot_pedestal" type="cylinder" pos="0 0 -0.306" size="0.085 0.294"
+          rgba="0.30 0.32 0.35 1"/>
+
+    <!-- Belt: long axis along Y. Surface z = belt.pos.z + half height.
+         The surface slides along Y (env sets its velocity to the belt speed every substep and
+         re-centres it), so contact friction carries a released / dropped target like a real conveyor. -->
+    <body name="belt" pos="-0.40 0 -0.14">
+      <joint name="belt_slide" type="slide" axis="0 1 0"/>
+      <geom name="belt_surface" type="box" size="0.15 1.0 0.02"
+            material="belt_mat" friction="1.1 0.01 0.001"/>
+    </body>
+    <!-- Static low side rails on both sides (do not move with the belt surface).
+         Position and height are set from config in the env (belt_rail_height_m). -->
+    <geom name="belt_rail_far" type="box" pos="-0.565 0 -0.13"
+          size="0.010 1.0 0.025" rgba="0.22 0.25 0.29 1"/>
+    <geom name="belt_rail_near" type="box" pos="-0.235 0 -0.13"
+          size="0.010 1.0 0.025" rgba="0.22 0.25 0.29 1"/>
+
+    <!-- Kinematic carriers (mocap) drive the targets along the trajectory
+         through weld constraints until the robot first touches the target. -->
+    <body name="box_carrier" mocap="true" pos="2 2 0"/>
+    <body name="cyl_carrier" mocap="true" pos="2.5 2 0"/>
+
+    <body name="target_box" pos="2 2 0">
+      <freejoint name="target_box_free"/>
+      <geom name="target_box_geom" class="target" type="box"
+            size="0.025 0.04 0.02" mass="0.15" rgba="0.85 0.45 0.10 1"/>
+    </body>
+    <body name="target_cyl" pos="2.5 2 0">
+      <freejoint name="target_cyl_free"/>
+      <geom name="target_cyl_geom" class="target" type="cylinder"
+            size="0.025 0.03" mass="0.15" rgba="0.15 0.55 0.85 1"/>
+    </body>
+  </worldbody>
+
+  <contact>
+    <!-- base_link rests on the pedestal; belt never reaches base_link, so the pair is safe to drop. -->
+    <exclude body1="world" body2="base_link"/>
+  </contact>
+
+  <equality>
+    <weld name="box_drive" body1="box_carrier" body2="target_box"
+          relpose="0 0 0 1 0 0 0" solref="0.01 1"/>
+    <weld name="cyl_drive" body1="cyl_carrier" body2="target_cyl"
+          relpose="0 0 0 1 0 0 0" solref="0.01 1"/>
+  </equality>
+
+  <include file="robot.xml"/>
+</mujoco>

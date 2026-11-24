@@ -1,0 +1,81 @@
+# DC1 现场标定结果（由 sim2real/calibration 的 step 脚本自动写入，可手工检查但不要随意改数）。
+# 训练 / 评估 / 看相机默认就用这个文件（nero_vs_rl.TRAIN_CONFIG）
+base: default.yaml
+env:
+  camera:
+    pos_in_gripper_base:
+    - 0.067888
+    - 0.009576
+    - 0.02697
+    quat_in_gripper_base:
+    - -0.11886308
+    - 0.70810505
+    - -0.68532495
+    - 0.12160801
+    width: 640
+    height: 400
+    fovy_deg: 45.6491
+    intrinsics:
+    - 475.2112
+    - 475.2112
+    - 323.9229
+    - 198.9565
+    min_depth_m: 0.191
+    latency_s: 0.08
+  belt_center_x: -0.3773
+  belt_half_width: 0.155
+provenance:
+- time: '2026-11-22 00:11:28'
+  step: handeye
+  session: /home/yunfeiwu/桌面/my_RL/calib_data/20261122_000803_handeye
+  accepted: true
+  board_spread_mm: 4.96
+  reprojection_rms_px: 4.278
+- time: '2026-11-22 00:12:04'
+  step: handeye
+  session: /home/yunfeiwu/桌面/my_RL/calib_data/20261122_000803_handeye
+  accepted: true
+  board_spread_mm: 4.96
+  reprojection_rms_px: 4.278
+- time: '2026-11-22 00:25:11'
+  step: handeye
+  session: /home/yunfeiwu/桌面/my_RL/calib_data/20261122_002349_handeye
+  accepted: true
+  board_spread_mm: 2.99
+  reprojection_rms_px: 2.766
+- time: '2026-11-22 00:36:14'
+  step: handeye
+  session: calib_data/20261122_003203_handeye_merged
+  accepted: true
+  n_samples: 107
+  n_sessions: 6
+  x_instability_mm: 2.96
+  x_instability_deg: 0.386
+  board_spread_mm: 8.76
+  reprojection_rms_px: 6.592
+- time: '2026-11-22 00:38:57'
+  step: blind_zone
+  session: /home/yunfeiwu/桌面/my_RL/calib_data/20261122_003806_blindzone
+  measured_m: 0.1782
+- time: '2026-11-22 00:39:31'
+  step: blind_zone
+  session: /home/yunfeiwu/桌面/my_RL/calib_data/20261122_003906_blindzone
+  measured_m: 0.1806
+- time: '2026-11-22 00:51:15'
+  step: belt
+  sessions:
+  - calib_data/20261122_004019_belt
+  - calib_data/20261122_004034_belt
+  n_measurements: 2
+  center_x_spread_mm: 0.1
+  measured_surface_z: -0.112
+  z_diff_vs_reference_mm: 10.4
+  surface_z_written: false
+  edges_seen: true
+  note: 带面高度保留原值（11-13 独立实测、NERO 真机抓取验证过）；本次测得值只作记录
+- time: '2026-11-22 22:05:25'
+  step: camera_latency
+  session: /home/yunfeiwu/adddisk1/MY_RL_test/real/20261122_220405_record
+  latency_s: 0.08
+  rms_mm_best: 8.0
+  rms_mm_at_zero: 11.4

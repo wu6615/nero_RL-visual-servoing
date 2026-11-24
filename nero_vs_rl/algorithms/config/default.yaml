@@ -1,0 +1,65 @@
+# NERO7 + 腕部 DC1 眼在手上动态抓取：默认训练配置（GAP-RL algorithms/config/*.yaml 对应）。
+# 只写常改的项；其余取 utils/config.py 里的默认值。
+# 标注"占位"的值不是现场实测；来源见 docs/现场几何来源.md。
+# 训练/评估默认用 dc1_site.yaml（本文件 + 现场实测值）；本文件只在要和占位参数对照时用 --config 指定。
+env:
+  control_freq: 10.0
+  max_steps: 120         # 12 s 内完成 识别 → 抓取 → 抬起保持（2026-11-22 定 8 s；2026-11-24 真机后用户改为 12 s）
+  action_frame: ee
+  max_delta_pos_m: 0.05      # 每步最大平移 5 cm → 末端最快 50 cm/s（2026-11-22：带速放宽到 50 cm/s 后从 2 cm 提高）
+  max_joint_speed_rad_s: [3.1416, 3.1416, 3.1416, 3.9270, 3.9270, 3.9270, 3.9270]   # NERO7 厂家：J1～J3 180°/s，J4～J7 225°/s
+  max_delta_rot_rad: 0.10
+  # 带（基座系）：surface_z 为实测平面；center_x 由现场等待位 TCP 估计；带宽占位
+  belt_center_x: -0.40
+  belt_surface_z: -0.12
+  belt_half_width: 0.15
+  belt_direction_sign: -1.0
+  belt_rail_height_m: 0.015   # 两侧护栏高出带面（用户现场说明，约 1.5 cm）
+  # 初始位姿（设计值）：v6 起物体横向铺满整条带，起点往远侧挪 8 cm、抬到 28 cm，让腕部相机视野盖住整条带
+  #   （TCP 正对带中心、高 22 cm 时，远侧偏 7 cm 以上的物体机械臂不动只有 17% 能完整看到；挪后 100%，总体 79% → 98%）
+  init_tcp_height: 0.28
+  init_tcp_offset_x: -0.08
+  init_tcp_offset_y: 0.07
+  # v6（2026-11-23）起：训练里就用部署时的目标修正（agents/controllers/pd_ee_delta_pose.py 的 correct）
+  # v7（2026-11-24）起训练的指尖下限和真机抓取档对齐：部署按安全带面 −0.112（比这里的带面 −0.120 高 8 mm）
+  #   + 抓取档余量 8 mm = 带面上 16 mm。v6 训练是 3 mm，真机上指尖比训练时早 1.3 cm 被挡住
+  finger_clearance_m: 0.016      # 夹爪最低点至少高出带面这么多（v5 学会了把指尖顶在带面上，v6 起有这条）
+  finger_length_noise_m: 0.005   # v7：每回合手指长度随机 ±5 mm（名义尺寸与 NERO 工程一致：link7 到指尖 179.5 mm）
+  joint_limit_margin_rad: 0.03   # 关节目标离硬限位至少 0.03 rad
+  workspace_pullback: true       # IK 解偏出工作空间时拉回
+  finger_rail_collision: true    # 手指碰护栏也扣分（物体可以贴着护栏走；部署时碰护栏会停）
+  camera:
+    fovy_deg: 75.0        # 占位：换成 DC1 深度工厂内参
+    width: 640
+    height: 400
+    min_depth_m: 0.15     # 占位：DC1 近距盲区需实测
+    max_depth_m: 1.2
+    occlusion_check: true
+  trajectory:
+    mode: line            # line | bezier2d | static
+    lateral_full_belt: true   # v6 起：横向位置在整条带宽上随机（按物体大小收进护栏内），不再只走带中间 ±7 cm
+    speed: [0.04, 0.50]   # m/s；2026-11-22 现场带速实测 3.6/9.6/13.3 cm/s，按用户要求放宽到 4～50 cm/s（高速档尽力而为）
+    vary_speed: true
+    # v7：真机先测静止物体、现场最低档 3.6 cm/s 都低于 4 cm/s。10% 回合静止，其余回合里 25% 是 0.5～4 cm/s 慢带
+    static_prob: 0.10
+    slow_prob: 0.25
+    slow_speed: [0.005, 0.04]
+  grasp_obs:
+    num_grasps: 20
+    num_points: 16
+    points_mode: gauss
+    memory_mode: extrapolate
+    visible_rule: full_top   # v6 起：顶面整个可见才算看到（和真机感知一致）
+  reward:
+    hold_still: -5.0         # v6 起：成功后机械臂还在动，每步扣 5（成功奖励 15）
+train:
+  total_timesteps: 2000000
+  n_envs: 8
+  buffer_size: 100000
+  batch_size: 256
+  gamma: 0.95
+  learning_starts: 5000
+  checkpoint_every: 100000
+  eval_every: 100000     # 每 10 万步评估一次：固定 100 回合、按成功率选最好模型（rl_utils.SuccessEvalCallback）
+  eval_episodes: 100
+  log_dir: /home/yunfeiwu/adddisk1/MY_RL_test/simulation   # 训练日志/模型放数据盘（系统盘空间不够）

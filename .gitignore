@@ -1,0 +1,11 @@
+.venv/
+runs/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+calib_data/**/images/
+calib_data/**/*.npy
+calib_data/**/verify/
+Log/
+MUJOCO_LOG.TXT
+vendor/

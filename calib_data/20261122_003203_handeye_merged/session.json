@@ -1,0 +1,17 @@
+{
+  "kind": "eye_in_hand_merged",
+  "board": {
+    "cols": 11,
+    "rows": 8,
+    "square_m": 0.02
+  },
+  "sources": [
+    "/home/yunfeiwu/桌面/my_RL/calib_data/20261122_000803_handeye",
+    "/home/yunfeiwu/桌面/my_RL/calib_data/20261122_001218_handeye",
+    "/home/yunfeiwu/桌面/my_RL/calib_data/20261122_001550_handeye",
+    "/home/yunfeiwu/桌面/my_RL/calib_data/20261122_001833_handeye",
+    "/home/yunfeiwu/桌面/my_RL/calib_data/20261122_002142_handeye",
+    "/home/yunfeiwu/桌面/my_RL/calib_data/20261122_002349_handeye"
+  ],
+  "created": "2026-11-22 00:32:03"
+}

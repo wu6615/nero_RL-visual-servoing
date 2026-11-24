@@ -1,0 +1,13 @@
+{
+  "kind": "eye_in_hand",
+  "board": {
+    "cols": 11,
+    "rows": 8,
+    "square_m": 0.02
+  },
+  "sim": false,
+  "robot_pose": "MJCF FK of measured joints -> gripper_base",
+  "can": "can0",
+  "firmware": "v121",
+  "created": "2026-11-22 00:21:43"
+}

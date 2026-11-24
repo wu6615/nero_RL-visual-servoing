@@ -1,0 +1,8 @@
+# 真机（标定 / 部署）额外依赖，装在同一个 .venv 里。
+# DC1：用 Orbbec SDK v1 的 C 库（ctypes 调用，不是 pip 包），放在 vendor/orbbec_sdk_v1/，
+#   下载方法见 nero_vs_rl/sim2real/calibration/README.md。SDK v2（pyorbbecsdk2）枚举不到 DC1，不要装。
+opencv-python
+python-can>=4.0
+# pyAgxArm（NERO SDK）：用 NERO 工程随附的同一版本。为了不在 NERO 工程目录里生成构建文件，先复制再装：
+#   cp -r /home/yunfeiwu/adddisk1/nero_conveyor_ros2-main/src/nero_core/vendor/pyAgxArm /tmp/pyAgxArm_copy
+#   .venv/bin/pip install /tmp/pyAgxArm_copy
