@@ -190,14 +190,22 @@ v6 的任务在 v5 上改了这些，都是为了和真机闭环一致：
 
 | 附件 | 内容 |
 |---|---|
-| `real_data_20261125.tar.gz` | 真机：离线录制（2026-11-22）、step5 运动检查、step6 跟随、step7 抓取（2026-11-24）。深度图、彩色图、关节、逐拍日志 |
-| `simulation_data_20261125.tar.gz` | 仿真：v0～v7 的模型、检查点、评估和 TensorBoard 日志，闭环干跑日志，真机回合复现结果 |
-| `SHA256SUMS.txt` | 校验和 |
+| `real_data_20261125.tar.gz.part00`～`part05` | 真机：离线录制（2026-11-22）、step5 运动检查、step6 跟随、step7 抓取（2026-11-24）。深度图、彩色图、关节、逐拍日志 |
+| `simulation_data_20261125.tar.gz.part00`～`part19` | 仿真：v0～v7 的模型、检查点、评估和 TensorBoard 日志，闭环干跑日志，真机回合复现结果 |
+| `SHA256SUMS.txt` | 合并后两个压缩包的校验和 |
 
-每个目录的说明见 [docs/数据清单.md](docs/数据清单.md)。下载并解压：
+每个目录的说明见 [docs/数据清单.md](docs/数据清单.md)。附件按 40 MB 切块，下载后先合并：
 
 ```bash
-gh release download data-20261125 --repo wu6615/nero_RL-visual-servoing && sha256sum -c SHA256SUMS.txt && tar xzf real_data_20261125.tar.gz && tar xzf simulation_data_20261125.tar.gz
+gh release download data-20261125 --repo wu6615/nero_RL-visual-servoing
+```
+
+```bash
+cat real_data_20261125.tar.gz.part* > real_data_20261125.tar.gz && cat simulation_data_20261125.tar.gz.part* > simulation_data_20261125.tar.gz && sha256sum -c SHA256SUMS.txt
+```
+
+```bash
+tar xzf real_data_20261125.tar.gz && tar xzf simulation_data_20261125.tar.gz
 ```
 
 标定原始图片（`calib_data/`，约 220 MB）没有上传，标定结果在 `nero_vs_rl/algorithms/config/dc1_site.yaml`。
