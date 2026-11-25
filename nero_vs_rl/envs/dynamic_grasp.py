@@ -6,6 +6,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import dataclasses
+
 import mujoco
 import numpy as np
 from gymnasium import spaces
@@ -16,6 +18,8 @@ from ..utils import traj_utils
 from ..utils.geometry import expmap, inv_T, make_T, mat_to_quat_wxyz, rot_z, symmetric_grasp_rot_dist
 from .base_env import BaseEnv
 from .observation import GraspTracker, assemble_obs
+
+PAD_GAP0_M = 0.008      # 指垫间距 = 0.008 + 2q（q = 单指行程，见 agents/robots/nero7.py）
 
 
 # =============================================================================
@@ -50,7 +54,7 @@ class DynamicGraspEnv(BaseEnv):
         g = self.cfg.grasp_obs
         self.N, self.K = g.num_grasps, g.num_points
         # 可夹持最大宽度 = 全开指垫间距 - 余量
-        self.max_width = 0.008 + 2 * self.cfg.gripper_max_q - g.finger_margin_m
+        self.max_width = PAD_GAP0_M + 2 * self.cfg.gripper_max_q - g.finger_margin_m
         self._fixed_pts = (gr.gripper_keypoints(self.K) if g.points_mode == "keypoints"
                            else np.random.default_rng(1029).normal(0, gr.FINGER_HALF_OPEN / 3, (self.K, 3)))
         self.controller.set_workspace(
@@ -176,6 +180,18 @@ class DynamicGraspEnv(BaseEnv):
             m.geom_pos[g] = self._finger_pos0[g] + self._finger_axis[g] * dl
         self.finger_length_offset = float(dl)
 
+    def set_grip_friction(self, mu: float):
+        """Effective finger-object sliding friction = mu (contacts take the larger of the two geoms, so set both).
+
+        【说明】扭转、滚动摩擦按手指滑动系数同比例缩小（模型里手指 2.0）。物体和带面的接触仍由带面的 1.1 决定。
+        """
+        m, o = self.model, self.obj["geom"]
+        if not hasattr(self, "_friction0"):
+            self._friction0 = {g: m.geom_friction[g].copy() for g in self.agent.finger_geoms}
+        for g in self.agent.finger_geoms:
+            m.geom_friction[g] = self._friction0[g] * mu / self._friction0[g][0]
+        m.geom_friction[o] = m.geom_friction[self.agent.finger_geoms[0]]
+
     def _setup_object(self, rng):
         m, oc, g = self.model, self.cfg.objects, self.cfg.grasp_obs
         gid, bid = self.obj["geom"], self.obj["body"]
@@ -197,6 +213,8 @@ class DynamicGraspEnv(BaseEnv):
             inertia = mass * np.array([(3 * r**2 + 4 * h**2) / 12] * 2 + [r**2 / 2])
             self.obj_half_h = float(h)
             self.grasps = gr.cylinder_grasps(r, h, self.max_width, g.max_tilt_deg)
+        if oc.grip_friction is not None:
+            self.set_grip_friction(rng.uniform(*oc.grip_friction))
         m.body_mass[bid] = mass
         m.body_inertia[bid] = inertia
         m.body_ipos[bid] = 0
@@ -257,20 +275,28 @@ class DynamicGraspEnv(BaseEnv):
     #      ⇒ 末端贴近物体时进入双目盲区，抓取会"消失"，这是眼在手上的核心难点
     #   2. 可见抓取加位置/姿态噪声；带噪物体位置送去测速
     #   3. 记忆、外推、观测拼装交给 observation.py（GraspTracker / assemble_obs），与真机同一份代码
-    #   visible_rule = full_top（v6 起）：先要求物体顶面整个可见（顶面轮廓上的点都在画面内、深度在量程内、
-    #   没被手指挡住），否则这一帧算"没看到"——和真机感知一致（顶面被截断时尺寸量不准，perception.py 不用这一帧）。
+    #   visible_rule = full_top（v6 起）：先要求物体顶面轮廓整个在画面内、深度在量程内，否则这一帧算"没看到"
+    #   ——和真机感知一致（顶面被画面截断时尺寸量不准，perception.py 不用这一帧）。
+    #   手指遮挡（2026-11-25 起真正生效）按顶面露出比例判：≥ min_top_exposed 才算看到；单个抓取不再判遮挡
+    #   （真机感知只要物体检出来，就给出全部抓取）。之前碰撞网格透明，mj_ray 跳过，遮挡一直没起作用。
     #   v5 用的 point 规则只要某个抓取的可见点在画面里就算看到，半截物体也有观测，部署时这部分帧会丢。
     def _observe_grasps(self) -> tuple[np.ndarray, np.ndarray, bool]:
         g, rng = self.cfg.grasp_obs, self.np_random
         T_wo = self.obj_T()
+        camera = self.cfg.camera
         if g.visible_rule == "full_top":
+            camera = dataclasses.replace(camera, occlusion_check=False)      # 轮廓和逐个抓取只看画面和深度；遮挡按顶面露出比例判
             top = (T_wo[:3, :3] @ self._top_outline().T).T + T_wo[:3, 3]
-            if not cam.visible_mask(self.model, self.data, self.agent.camera, top, self.obj["geom"], self.cfg.camera).all():
+            see = lambda pts, c: cam.visible_mask(self.model, self.data, self.agent.camera, pts, self.obj["geom"], c)
+            if not see(top, camera).all():
+                return self.tracker.update(self.t, None)
+            face = gr.top_face_samples(self.obj_type, self.model.geom_size[self.obj["geom"]])
+            if see((T_wo[:3, :3] @ face.T).T + T_wo[:3, 3], self.cfg.camera).mean() < g.min_top_exposed:
                 return self.tracker.update(self.t, None)
         elif g.visible_rule != "point":
             raise ValueError(f"未知 visible_rule: {g.visible_rule}")
         vis_world = (T_wo[:3, :3] @ self.grasps.vis_obj.T).T + T_wo[:3, 3]
-        mask = cam.visible_mask(self.model, self.data, self.agent.camera, vis_world, self.obj["geom"], self.cfg.camera)
+        mask = cam.visible_mask(self.model, self.data, self.agent.camera, vis_world, self.obj["geom"], camera)
         if not mask.any():
             return self.tracker.update(self.t, None)
         Gw = self.true_grasps_world()[mask]
@@ -308,10 +334,31 @@ class DynamicGraspEnv(BaseEnv):
         Ge = np.einsum("ij,njk->nik", inv_T(make_T(R, p)), self.true_grasps_world())
         return np.linalg.norm(Ge[:, :3, 3], axis=1), symmetric_grasp_rot_dist(Ge[:, :3, :3]) / np.pi
 
+    def jaw_state(self) -> dict[str, float]:
+        """Jaw vs object right now: misalignment (rad), object width across the jaw, pad gap, tilt, relative speed."""
+        d, m = self.data, self.model
+        _, R = self.agent.tcp_pose(d)
+        b, g = self.obj["body"], self.obj["geom"]
+        misalign, width = gr.jaw_fit(self.obj_type, m.geom_size[g], d.xmat[b].reshape(3, 3).T @ R[:, 1])
+        jac = np.zeros((3, m.nv))
+        mujoco.mj_jacSite(m, d, jac, None, self.agent.tcp_site)
+        v_obj = d.qvel[self.obj["dadr"]:self.obj["dadr"] + 3]            # 自由关节前 3 维 = 世界系线速度
+        return dict(misalign=misalign, width=width, gap=PAD_GAP0_M + 2 * self.agent.gripper_opening(d),
+                    tilt=float(np.arccos(np.clip(-R[2, 2], -1.0, 1.0))),
+                    rel_speed=float(np.linalg.norm(jac @ d.qvel - v_obj)))
+
+    def is_grasped(self, jaw: dict[str, float]) -> bool:
+        """Both fingers on the object and (clean_grasp) squarely closed on it; also used by the virtual lab's truth."""
+        c, ct = self.cfg, self._contacts
+        if not (ct["left"] and ct["right"] and self.agent.gripper_opening(self.data) > 1e-3):
+            return False
+        return not c.clean_grasp or gr.is_clean_grasp(jaw["gap"], jaw["misalign"], jaw["width"],
+                                                      c.clean_align_deg, c.clean_width_tol_m)
+
     def evaluate(self) -> dict[str, Any]:
         c, d = self.cfg, self.data
-        ct = self._contacts
-        grasped = ct["left"] and ct["right"] and self.agent.gripper_opening(d) > 1e-3
+        jaw = self.jaw_state()
+        grasped = self.is_grasped(jaw)
         obj_pos = d.xpos[self.obj["body"]]
         lift = float(obj_pos[2] - self.obj_half_h - c.belt_surface_z)
         lifted = grasped and lift > c.lift_height_m
@@ -326,6 +373,7 @@ class DynamicGraspEnv(BaseEnv):
             "lift": lift, "robot_static": self.agent.arm_speed(d) < 0.2, "collision": bool(self._step_collision),
             "visible": bool(self._visible), "dist_t": float(dt[gi]), "dist_r": float(dr[gi]),
             "fell": fell, "missed": missed, "obj_type": self.obj_type,
+            "jaw": jaw, "closing": bool(self.prev_action[6] < 0),
             "observed_grasps_ee": self._obs_grasps_ee.copy(), "observed_valid": self._obs_valid.copy(),
             "obj_vel_est": self.tracker.est_obj_vel.copy(),
         }
@@ -335,7 +383,8 @@ class DynamicGraspEnv(BaseEnv):
     #   否则累加：
     #     info_exist   看得到抓取，或已贴近（<6 cm，进入盲区不应被惩罚）
     #     approach     接近最近的真值抓取，平移、旋转各 w·(1-tanh(5d))
-    #     grasp        两指都接触物体
+    #     grasp        抓住（clean_grasp 打开时要真正夹住：对正且合到物体宽度，见 is_grasped）
+    #     close_*      物体近旁要闭合但没夹住时，没对正 / 倾斜 / 手还在动（负，见 closing_penalty）
     #     lift         抓住后越接近抬升高度越高
     #     static       已抬起且机械臂基本静止
     #     collision    机械臂（非手指）碰到带面 / 护栏（负）
@@ -361,12 +410,23 @@ class DynamicGraspEnv(BaseEnv):
             r += w.lift * (1 - np.tanh(5 * max(self.cfg.lift_height_m - info["lift"], 0.0)))
             if info["lifted"] and info["robot_static"]:
                 r += w.static
+        r += self.closing_penalty(info)
         if info["collision"]:
             r += w.collision
         r += w.time
         if info["missed"] or info["fell"]:
             r += w.time * max(self.cfg.max_steps - self.step_count, 0)
         return float(r * w.scale)
+
+    def closing_penalty(self, info: dict[str, Any]) -> float:
+        """Closing next to the object while askew, tilted or still moving relative to it (0 once cleanly grasped)."""
+        w = self.cfg.reward
+        if info["grasped"] or not info.get("closing") or info["dist_t"] >= w.close_near_m:
+            return 0.0
+        j = info["jaw"]
+        return (w.close_misalign * min(j["misalign"] / np.deg2rad(45), 1.0)
+                + w.close_tilt * float(np.clip((j["tilt"] - np.deg2rad(15)) / np.deg2rad(30), 0.0, 1.0))
+                + w.close_moving * min(j["rel_speed"] / w.close_speed_ref, 1.0))
 
     def check_termination(self, info: dict[str, Any]) -> bool:
         return bool((info["success"] and self.cfg.terminate_on_success) or info["fell"] or info["missed"]

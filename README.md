@@ -66,12 +66,18 @@ python -m nero_vs_rl.algorithms.scripts.sac_eval --episodes 30          # 默认
 
 # 训练 SAC（默认 2M 步、8 个并行环境；输出在 /home/yunfeiwu/adddisk1/MY_RL_test/simulation/<名字>/，TensorBoard 在 tb/）
 python -m nero_vs_rl.algorithms.scripts.sac_train --run-name sac_dc1_v2
+# 训练中按 Ctrl+C = 暂停（存权重 + 经验池到 paused_model.zip / paused_replay_buffer.pkl），之后接着训：
+python -m nero_vs_rl.algorithms.scripts.sac_train --run-name sac_dc1_v7 --resume
 # 或者从已有模型的权重接着训（例如占位参数下训好的 sac_dc1_v1），比从零开始快
 python -m nero_vs_rl.algorithms.scripts.sac_train --run-name sac_dc1_v2_ft --init-model /home/yunfeiwu/adddisk1/MY_RL_test/simulation/sac_dc1_v1/best/best_model.zip
 tensorboard --logdir /home/yunfeiwu/adddisk1/MY_RL_test/simulation
 # 评估训练好的模型
 python -m nero_vs_rl.algorithms.scripts.sac_eval --model /home/yunfeiwu/adddisk1/MY_RL_test/simulation/sac_dc1_v5/best/best_model.zip --video /home/yunfeiwu/adddisk1/MY_RL_test/simulation/eval.mp4
 ```
+
+## 云端 Isaac Sim 训练
+
+框架在 [nero_vs_rl/isaac/](nero_vs_rl/isaac/README.md)（2026-11-25 搭好，Isaac 侧还没有运行过）。策略接口不变，训好后搬回本机用 step4 干跑和真机流程验证。
 
 ## 现场标定
 
@@ -177,6 +183,24 @@ v6 的任务在 v5 上改了这些，都是为了和真机闭环一致：
 | 带中心线 x、带宽 | −0.40 m（等待位估计）、0.30 m | 标定 step5 |
 
 实测/有据可查的值（带面高度、带向、等待位、跟随区间）的出处见 [docs/现场几何来源.md](docs/现场几何来源.md)。设计细节见 [docs/设计说明.md](docs/设计说明.md)。
+
+## 数据下载
+
+真机和仿真数据太大（约 1.3 GB），放在 GitHub Release [`data-20261125`](https://github.com/wu6615/nero_RL-visual-servoing/releases/tag/data-20261125)，不进 git：
+
+| 附件 | 内容 |
+|---|---|
+| `real_data_20261125.tar.gz` | 真机：离线录制（2026-11-22）、step5 运动检查、step6 跟随、step7 抓取（2026-11-24）。深度图、彩色图、关节、逐拍日志 |
+| `simulation_data_20261125.tar.gz` | 仿真：v0～v7 的模型、检查点、评估和 TensorBoard 日志，闭环干跑日志，真机回合复现结果 |
+| `SHA256SUMS.txt` | 校验和 |
+
+每个目录的说明见 [docs/数据清单.md](docs/数据清单.md)。下载并解压：
+
+```bash
+gh release download data-20261125 --repo wu6615/nero_RL-visual-servoing && sha256sum -c SHA256SUMS.txt && tar xzf real_data_20261125.tar.gz && tar xzf simulation_data_20261125.tar.gz
+```
+
+标定原始图片（`calib_data/`，约 220 MB）没有上传，标定结果在 `nero_vs_rl/algorithms/config/dc1_site.yaml`。
 
 ## 来源和许可
 

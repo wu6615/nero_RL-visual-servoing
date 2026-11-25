@@ -1,5 +1,11 @@
 # Isaac Sim 迁移说明（2026-11-24）
 
+> **2026-11-25：框架已搭在 `nero_vs_rl/isaac/`，操作步骤看 [那里的 README](../nero_vs_rl/isaac/README.md)。** 和本文不一致的以 README 为准：
+> - 版本定为 Isaac Lab 2.3.2 + Isaac Sim 5.1；
+> - 机器人走 URDF → USD，不转 MJCF；
+> - 可见性用几何判断，没有用 RayCaster；
+> - 第 0、4 节"第一次抓取差的主因是没见过静止物体"已被后来的分析推翻，见 `sim2real/deploy/闭环阶段.md` 的更正。
+
 把训练仿真从 MuJoCo 换到 Isaac Sim（租服务器跑）之前的整理：
 - 哪些要重写、哪些不动；
 - 要带过去的参数；

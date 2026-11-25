@@ -84,6 +84,39 @@ def _pack(out) -> GraspSet:
     return GraspSet(np.array(out[0]), np.array(out[1]), np.array(out[2], dtype=float))
 
 
+def top_face_samples(obj_type: str, half: np.ndarray, n: int = 25) -> np.ndarray:
+    """n points spread evenly over the top face (object frame); used for "how much of the top is exposed"."""
+    if obj_type == "box":
+        g = np.linspace(-0.9, 0.9, int(round(n ** 0.5)))
+        X, Y = np.meshgrid(g, g)
+        return np.column_stack([X.ravel() * half[0], Y.ravel() * half[1], np.full(X.size, half[2])])
+    k = np.arange(n)
+    r, a = 0.92 * half[0] * np.sqrt((k + 0.5) / n), k * np.pi * (3 - 5 ** 0.5)      # 向日葵排布，面积均匀
+    return np.column_stack([r * np.cos(a), r * np.sin(a), np.full(n, half[1])])
+
+
+def jaw_fit(obj_type: str, half: np.ndarray, close_dir_obj: np.ndarray) -> tuple[float, float]:
+    """How squarely the jaw meets the object: (misalignment rad, object width across that jaw direction m).
+
+    【说明】close_dir_obj = 夹爪闭合轴（TCP y）在物体系里的方向；half 同 geom_size（box: hx hy hz；cylinder: r h）。
+    长方体找最接近的一对平行面：夹角 = 闭合轴和该面法线的夹角，宽度 = 这对面的间距（翻倒后 z 面也算）。
+    圆柱从侧面夹：夹角 = 闭合轴偏离圆截面的角度，宽度 = 直径；更接近轴线方向时按两个端面算。
+    """
+    c = np.abs(np.asarray(close_dir_obj, float))
+    c = c / np.linalg.norm(c)
+    if obj_type == "box":
+        cos, widths = c, 2 * np.asarray(half, float)[:3]
+    else:
+        cos, widths = np.array([np.hypot(c[0], c[1]), c[2]]), 2 * np.asarray(half, float)[:2]
+    i = int(np.argmax(cos))
+    return float(np.arccos(np.clip(cos[i], 0.0, 1.0))), float(widths[i])
+
+
+def is_clean_grasp(gap_m: float, misalign_rad: float, width_m: float, max_misalign_deg: float, width_tol_m: float) -> bool:
+    """Squeezed between two parallel faces: aligned, and the pad gap really closed onto the object's width."""
+    return bool(misalign_rad <= np.deg2rad(max_misalign_deg) and abs(gap_m - width_m) <= width_tol_m)
+
+
 def gripper_keypoints(k: int) -> np.ndarray:
     """Fixed outline of the NERO two-finger gripper in the TCP frame (k points)."""
     w, tip = FINGER_HALF_OPEN, TIP_AHEAD_OF_TCP

@@ -24,6 +24,7 @@ env:
   # v7（2026-11-24）起训练的指尖下限和真机抓取档对齐：部署按安全带面 −0.112（比这里的带面 −0.120 高 8 mm）
   #   + 抓取档余量 8 mm = 带面上 16 mm。v6 训练是 3 mm，真机上指尖比训练时早 1.3 cm 被挡住
   finger_clearance_m: 0.016      # 夹爪最低点至少高出带面这么多（v5 学会了把指尖顶在带面上，v6 起有这条）
+  clean_grasp: true              # v8：对正、且两指真正合到物体宽度才算抓住（之前两指碰到就算）
   finger_length_noise_m: 0.005   # v7：每回合手指长度随机 ±5 mm（名义尺寸与 NERO 工程一致：link7 到指尖 179.5 mm）
   joint_limit_margin_rad: 0.03   # 关节目标离硬限位至少 0.03 rad
   workspace_pullback: true       # IK 解偏出工作空间时拉回
@@ -50,7 +51,13 @@ env:
     points_mode: gauss
     memory_mode: extrapolate
     visible_rule: full_top   # v6 起：顶面整个可见才算看到（和真机感知一致）
+  objects:
+    grip_friction: [0.4, 0.9]   # v8：手指与物体的有效摩擦（设计值，未实测；模型文件里是 2.0，会把没对正的物体粘起来）
   reward:
+    # v8：物体近旁要闭合但还没夹住时扣分（抓住 +3）：没对正 / 倾斜超过 15° / 手相对物体还在动
+    close_misalign: -1.5
+    close_tilt: -1.0
+    close_moving: -1.5
     hold_still: -5.0         # v6 起：成功后机械臂还在动，每步扣 5（成功奖励 15）
 train:
   total_timesteps: 2000000

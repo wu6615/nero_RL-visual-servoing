@@ -41,9 +41,9 @@ def test_interp_joints_by_timestamp():
 def sim_record(tmp_path_factory):
     from nero_vs_rl.sim2real.deploy import step1_record
     out = tmp_path_factory.mktemp("deploy") / "rec"
-    # 种子 3：物体在带中间（v7 起手指长度随机化多抽一个随机数，种子 0 变成了贴近护栏、视角很斜的圆柱，
+    # 种子 4：长方体在带中间、带速 14～28 cm/s（v7 起手指长度随机化多抽一个随机数，种子 0 变成了贴近护栏、很慢的圆柱，
     #   位置误差 4.3 mm；种子 1～5 都是 1.0～1.1 mm）
-    step1_record.main(["--sim", "--seconds", "12", "--seed", "3", "--out", str(out), "--no-preview"])
+    step1_record.main(["--sim", "--seconds", "12", "--seed", "4", "--out", str(out), "--no-preview"])
     return out
 
 
@@ -84,8 +84,10 @@ def test_replay_perception_matches_ground_truth(sim_record, tmp_path):
     lo, hi = cfg.trajectory.speed
     timed = [o for o in s["objects"] if "speed_cm_s" in o]   # 高速物体可见帧太少时没有速度估计
     assert timed
-    for o in timed:
-        assert o["direction_dev_deg"] < 10 and 0.8 * lo * 100 < o["speed_cm_s"] < 1.2 * hi * 100   # 沿 −Y、在训练速度范围内
+    for o in timed:                                          # v7 起有静止 / 慢带物体：方向只对动起来的物体查
+        assert o["speed_cm_s"] < 1.2 * hi * 100
+        if o["speed_cm_s"] >= 2.0:
+            assert o["direction_dev_deg"] < 10                # 沿 −Y
     assert (sim_record / "replay_report.json").exists()
 
 
@@ -225,7 +227,7 @@ def test_latency_estimate_recovers_injected_delay(tmp_path):
     from nero_vs_rl.sim2real.deploy.step3_measure_latency import estimate
 
     d = tmp_path / "lat"
-    step1_record.main(["--sim", "--sim-motion", "scripted", "--seconds", "30", "--seed", "3", "--out", str(d),
+    step1_record.main(["--sim", "--sim-motion", "scripted", "--seconds", "30", "--seed", "4", "--out", str(d),
                        "--no-preview"])
     fr = [json.loads(line) for line in (d / "frames.jsonl").read_text().splitlines()]
     t, off = [], 0.0

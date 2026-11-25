@@ -56,3 +56,34 @@ def test_sac_train_warm_start_from_saved_model(tmp_path):
     resolved = yaml.safe_load((tmp_path / "b" / "resolved_config.yaml").read_text(encoding="utf-8"))
     assert resolved["init_model"] == str(src)
     assert resolved["env"]["camera"]["min_depth_m"] == cfg["env"]["camera"]["min_depth_m"]   # 用的是实测配置
+
+
+def test_sac_train_pause_and_resume(tmp_path, monkeypatch):
+    """Ctrl+C saves paused_model + replay buffer; --resume continues the step count to total_timesteps."""
+    import yaml
+    from stable_baselines3 import SAC
+
+    from nero_vs_rl import TRAIN_CONFIG
+    from nero_vs_rl.algorithms.scripts import sac_train
+
+    cfg = yaml.safe_load(TRAIN_CONFIG.read_text(encoding="utf-8"))
+    cfg.setdefault("train", {}).update(log_dir=str(tmp_path), batch_size=8, buffer_size=500, learning_starts=5)
+    cfg["base"] = str(TRAIN_CONFIG.parent / cfg["base"])
+    cfg_path = tmp_path / "cfg.yaml"
+    cfg_path.write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
+    real_learn = SAC.learn
+
+    def learn_then_ctrl_c(self, total_timesteps, **kw):            # 跑 15 步后模拟按 Ctrl+C
+        real_learn(self, 15, **kw)
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(SAC, "learn", learn_then_ctrl_c)
+    sac_train.main(["--config", str(cfg_path), "--run-name", "r", "--total-timesteps", "40", "--n-envs", "1", "--no-eval"])
+    run = tmp_path / "r"
+    assert (run / "paused_model.zip").exists() and (run / "paused_replay_buffer.pkl").exists()
+    assert not (run / "final_model.zip").exists()
+    monkeypatch.setattr(SAC, "learn", real_learn)
+    m = sac_train.main(["--run-name", "r", "--resume", "--config", str(cfg_path), "--n-envs", "1", "--no-eval",
+                        "--total-timesteps", "40"])
+    assert m.num_timesteps == 40 and m.replay_buffer.size() >= 40
+    assert SAC.load(run / "final_model.zip", device="cpu").num_timesteps == 40

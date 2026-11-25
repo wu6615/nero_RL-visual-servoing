@@ -157,3 +157,54 @@ def test_v7_finger_length_noise_moves_fingertips_and_twin_stays_nominal(site_cfg
         assert twin.cfg.finger_length_noise_m == 0.0
     finally:
         env.close()
+
+
+def test_fingers_block_the_wrist_camera(site_cfg):
+    """mj_ray skips transparent geoms: the collision meshes must stay opaque or finger occlusion silently does nothing."""
+    import dataclasses
+
+    import mujoco
+
+    from nero_vs_rl.sensors import camera as cam
+    env = DynamicGraspEnv(dataclasses.replace(site_cfg, finger_length_noise_m=0.0))
+    try:
+        env.reset(seed=0)
+        m, d, c = env.model, env.data, site_cfg.camera
+        assert all(m.geom_rgba[g, 3] > 0 for g in env.agent.finger_geoms)
+        o, gid = d.cam_xpos[env.agent.camera].copy(), np.zeros(1, np.int32)
+        for g in env.agent.finger_geoms:
+            v = d.geom_xpos[g] - o
+            mujoco.mj_ray(m, d, o, v / np.linalg.norm(v), cam.RAY_GEOMGROUP, 1, -1, gid)
+            assert gid[0] in env.agent.finger_geoms
+        x, y = np.meshgrid(np.linspace(-.13, .13, 30), np.linspace(-.2, .3, 40))
+        pts = np.column_stack([site_cfg.belt_center_x + x.ravel(), y.ravel(), np.full(x.size, site_cfg.belt_surface_z + 0.05)])
+        free = cam.visible_mask(m, d, env.agent.camera, pts, -1, dataclasses.replace(c, occlusion_check=False))
+        seen = cam.visible_mask(m, d, env.agent.camera, pts, -1, c)
+        assert not (seen & ~free).any() and 0.03 < (free & ~seen).sum() / free.sum() < 0.4      # 手指挡住一部分，不是全部
+    finally:
+        env.close()
+
+
+def test_visibility_agrees_with_deployed_perception(site_cfg):
+    """The simulated "seen" flag must track what perception.py accepts on the rendered depth (start states)."""
+    import dataclasses
+
+    from nero_vs_rl.sim2real.deploy.common import RobotTwin
+    from nero_vs_rl.sim2real.deploy.perception import BeltObjectDetector, observe
+    from nero_vs_rl.sim2real.hardware.sim_workcell import sim_depth_intrinsics
+    from nero_vs_rl.utils.geometry import make_T
+    cfg = dataclasses.replace(site_cfg, finger_length_noise_m=0.0)
+    env, tw, i = DynamicGraspEnv(cfg), RobotTwin(cfg), sim_depth_intrinsics(cfg)
+    K = np.array([[i["fx"], 0, i["cx"]], [0, i["fy"], i["cy"]], [0, 0, 1.0]])
+    same, n = 0, 120
+    try:
+        for s in range(n):
+            vis = env.reset(seed=s)[1]["visible"]
+            depth = env.render_wrist_rgbd()[1]
+            tw.set_joints(env.agent.arm_qpos(env.data))
+            p, R = tw.tcp_pose()
+            G = observe(BeltObjectDetector(cfg, K, np.zeros(5), tw.max_width), depth, tw.T_base_cam_cv(), make_T(R, p), *tw.cam_pose_mj(), cfg)[1]
+            same += vis == (G is not None)
+    finally:
+        env.close()
+    assert same / n > 0.92

@@ -153,8 +153,7 @@ class SimWorkcell:
     def truth(self) -> dict:
         """Ground truth the lab does not have: is the object really held and lifted (same rule as env.evaluate)."""
         env, d, c = self.env, self.data, self.cfg
-        ct = env._contacts
-        grasped = bool(ct["left"] and ct["right"] and self.agent.gripper_opening(d) > 1e-3)
+        grasped = env.is_grasped(env.jaw_state())
         p = d.xpos[env.obj["body"]]
         lift = float(p[2] - env.obj_half_h - c.belt_surface_z)
         return dict(grasped=grasped, lifted=grasped and lift > c.lift_height_m, lift=lift, obj_type=env.obj_type,

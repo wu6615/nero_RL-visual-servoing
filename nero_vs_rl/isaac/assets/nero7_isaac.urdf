@@ -1,0 +1,280 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="nero7">
+  <link name="base_link">
+    <inertial>
+      <origin xyz="-0.0127840459 0.000155220369 0.0396898043" rpy="1.57225503 -0.00186697619 1.55009415" />
+      <mass value="0.993742618" />
+      <inertia ixx="0.00112046718" ixy="0" ixz="0" iyy="0.000878321646" iyz="0" izz="0.000837715458" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/base_link.stl" />
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/base_link.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="link1">
+    <inertial>
+      <origin xyz="-0.000768106 -5.71803e-05 -0.00686373" rpy="0.0475921354 -0.095438158 0.0236259003" />
+      <mass value="0.767105" />
+      <inertia ixx="0.000668361" ixy="0" ixz="0" iyy="0.000545022" iyz="0" izz="0.000513619" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/link1.stl" />
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/link1.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="link2">
+    <inertial>
+      <origin xyz="0.000796867 -0.0789033 0.00111849" rpy="1.52173692 0.00920930151 -0.0178272945" />
+      <mass value="0.693819" />
+      <inertia ixx="0.00201137" ixy="0" ixz="0" iyy="0.00182229" iyz="0" izz="0.000632162" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/link2.stl" />
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/link2.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="link3">
+    <inertial>
+      <origin xyz="0.000145134 -0.00121379 -0.0486114" rpy="-0.0114505919 -0.00104627348 -0.00671875231" />
+      <mass value="0.672465" />
+      <inertia ixx="0.0034323" ixy="0" ixz="0" iyy="0.00338703" iyz="0" izz="0.000288126" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/link3.stl" />
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/link3.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="link4">
+    <inertial>
+      <origin xyz="-0.000313346 -0.0567519 0.000760561" rpy="1.46347622 0.00292564129 -0.0198892266" />
+      <mass value="0.484514" />
+      <inertia ixx="0.000503972" ixy="0" ixz="0" iyy="0.000403451" iyz="0" izz="0.00023296" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/link4.stl" />
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/link4.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="link5">
+    <inertial>
+      <origin xyz="0.00265591 0.00201196 -0.116209" rpy="-0.0569569571 0.0329345248 0.2007261" />
+      <mass value="0.583684" />
+      <inertia ixx="0.000897188" ixy="0" ixz="0" iyy="0.000859677" iyz="0" izz="0.000214923" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/link5.stl" />
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/link5.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="link6">
+    <inertial>
+      <origin xyz="9.50151e-05 0.00107831 -0.00019111" rpy="1.56657119 -0.0574141148 -0.0183651394" />
+      <mass value="0.314041" />
+      <inertia ixx="6.02857e-05" ixy="0" ixz="0" iyy="5.75589e-05" iyz="0" izz="4.69904e-05" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/link6.stl" />
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/link6.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="link7">
+    <inertial>
+      <origin xyz="-0.00014 -0.0001 -0.00275" rpy="0 0 0" />
+      <mass value="0.01" />
+      <inertia ixx="1e-05" ixy="0" ixz="0" iyy="1e-05" iyz="0" izz="1e-05" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/link7.stl" />
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/link7.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="gripper_flange">
+    <inertial>
+      <origin xyz="0.000253201 -0.000322696 -0.0100829" rpy="0 0 0" />
+      <mass value="0.047711" />
+      <inertia ixx="3.61411e-05" ixy="0" ixz="0" iyy="1.78242e-05" iyz="0" izz="2.69594e-05" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/gripper_flange.stl" />
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/gripper_flange.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="gripper_base">
+    <inertial>
+      <origin xyz="-0.000183807 8.05033e-05 0.0321437" rpy="0.000192578683 0.0137927773 0.00157838931" />
+      <mass value="0.45" />
+      <inertia ixx="0.000929442334" ixy="0" ixz="0" iyy="0.000714469474" iyz="0" izz="0.000394318192" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/gripper_base_drawing_20261012.stl" />
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/gripper_base_drawing_20261012.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="gripper_link1">
+    <inertial>
+      <origin xyz="0.000651232 -0.049193 0.00972259" rpy="2.60856503 -1.34442754 -1.04225139" />
+      <mass value="0.025" />
+      <inertia ixx="7.74531e-05" ixy="0" ixz="0" iyy="7.36783e-05" iyz="0" izz="1e-05" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/gripper_link1.stl" />
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/gripper_link1.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="gripper_link2">
+    <inertial>
+      <origin xyz="0.000651232 -0.049193 0.00972259" rpy="2.60856503 -1.34442754 -1.04225139" />
+      <mass value="0.025" />
+      <inertia ixx="7.74531e-05" ixy="0" ixz="0" iyy="7.36783e-05" iyz="0" izz="1e-05" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/gripper_link2.stl" />
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="../../assets/descriptions/nero7/meshes/gripper_link2.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="joint1" type="revolute">
+    <origin xyz="0 0 0.138" rpy="0 0 0" />
+    <parent link="base_link" />
+    <child link="link1" />
+    <axis xyz="0 0 1" />
+    <limit lower="-2.74016693" upper="2.74016693" effort="100" velocity="3.927" />
+  </joint>
+  <joint name="joint2" type="revolute">
+    <origin xyz="0 0 0" rpy="-1.57079633 5.35899094e-08 -3.14159265" />
+    <parent link="link1" />
+    <child link="link2" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.78023584" upper="1.78023584" effort="100" velocity="3.927" />
+  </joint>
+  <joint name="joint3" type="revolute">
+    <origin xyz="0 -0.31 0" rpy="-1.57079633 0 -3.14159261" />
+    <parent link="link2" />
+    <child link="link3" />
+    <axis xyz="0 0 1" />
+    <limit lower="-2.7925268" upper="2.7925268" effort="100" velocity="3.927" />
+  </joint>
+  <joint name="joint4" type="revolute">
+    <origin xyz="0 0 0" rpy="-1.57079633 0 -3.14159261" />
+    <parent link="link3" />
+    <child link="link4" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.04719755" upper="2.18166156" effort="100" velocity="3.927" />
+  </joint>
+  <joint name="joint5" type="revolute">
+    <origin xyz="0 -0.27001 0" rpy="1.57079633 -1.57079633 0" />
+    <parent link="link4" />
+    <child link="link5" />
+    <axis xyz="0 0 1" />
+    <limit lower="-2.7925268" upper="2.7925268" effort="100" velocity="3.927" />
+  </joint>
+  <joint name="joint6" type="revolute">
+    <origin xyz="0 0 0" rpy="1.57079633 -1.57079633 0" />
+    <parent link="link5" />
+    <child link="link6" />
+    <axis xyz="0 0 1" />
+    <limit lower="-0.767944871" upper="0.994837674" effort="100" velocity="3.927" />
+  </joint>
+  <joint name="joint7" type="revolute">
+    <origin xyz="0 -0.0235 0" rpy="1.57079633 0 0" />
+    <parent link="link6" />
+    <child link="link7" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.69296937" upper="1.69296937" effort="100" velocity="3.927" />
+  </joint>
+  <joint name="gripper_flange_fixed" type="fixed">
+    <origin xyz="0.031 0 -0.0235" rpy="-1.57080033 -8.00004507e-12 -1.57080033" />
+    <parent link="link7" />
+    <child link="gripper_flange" />
+  </joint>
+  <joint name="gripper_base_fixed" type="fixed">
+    <origin xyz="0 0 0.006" rpy="0 0 0" />
+    <parent link="gripper_flange" />
+    <child link="gripper_base" />
+  </joint>
+  <joint name="gripper_joint1" type="prismatic">
+    <origin xyz="0 0 0.1425" rpy="1.57079633 0 3.14159265" />
+    <parent link="gripper_base" />
+    <child link="gripper_link1" />
+    <axis xyz="0 0 1" />
+    <limit lower="0" upper="0.05" effort="40" velocity="1.0" />
+  </joint>
+  <joint name="gripper_joint2" type="prismatic">
+    <origin xyz="0 0 0.1425" rpy="1.57079633 0 0" />
+    <parent link="gripper_base" />
+    <child link="gripper_link2" />
+    <axis xyz="0 0 -1" />
+    <limit lower="-0.05" upper="0" effort="40" velocity="1.0" />
+  </joint>
+</robot>

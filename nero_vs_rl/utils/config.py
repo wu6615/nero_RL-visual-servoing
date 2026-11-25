@@ -38,6 +38,9 @@ class ObjectConfig:
     cyl_radius: list[float] = field(default_factory=lambda: [0.015, 0.035])
     cyl_half_height: list[float] = field(default_factory=lambda: [0.015, 0.050])
     mass: list[float] = field(default_factory=lambda: [0.05, 0.30])
+    # 手指与物体之间的滑动摩擦系数，每回合随机（设计值，没有实测）。None = 用模型文件里的值（手指 2.0、物体 1.0）。
+    #   MuJoCo 接触取两者较大值，所以要同时改手指和物体；模型里的有效值 2.0 能把没对正的物体"粘"起来
+    grip_friction: list[float] | None = None
 
 
 # 现场带速范围：2026-11-22 部署离线回放测得三档 3.6 / 9.6 / 13.3 cm/s（docs/现场几何来源.md），留余量取 15 cm/s。
@@ -80,6 +83,9 @@ class GraspObsConfig:
     #   full_top  物体顶面整个在画面内、深度在量程内、没被挡住才算看到，然后再逐个判断抓取
     #             （和真机感知一致：顶面被画面边缘截断时尺寸量不准，deploy/perception.py 不用这一帧）
     visible_rule: str = "point"
+    # full_top 规则下的手指遮挡：顶面露出比例低于此值算没看到。2026-11-25 用渲染深度 + 真机感知标出来的：
+    #   露出过半时感知仍可用，位置误差中位 ≤ 6 mm；再少就时有时无、误差 1 cm 以上
+    min_top_exposed: float = 0.5
 
 
 @dataclass
@@ -93,6 +99,13 @@ class RewardConfig:
     static: float = 1.0
     collision: float = -1.0
     time: float = -1.0            # 成功前每个控制步的时间惩罚（× scale）；提前失败结束时补扣剩余步数
+    # v8：物体近旁（dist_t < close_near_m）要闭合、但还没夹住时，按下面三项扣分（都是负数；0 = 不管）。
+    #   第一次真机抓取：闭合轴和盒子边成 44°～57°、倾斜 14°～29°、合拢的 0.2 s 里手每拍走 3～5 cm → 全部夹空
+    close_misalign: float = 0.0   # × min(闭合轴与最近一对平行面的夹角 / 45°, 1)
+    close_tilt: float = 0.0       # × min(接近方向偏离竖直超过 15° 的部分 / 30°, 1)
+    close_moving: float = 0.0     # × min(TCP 相对物体的速度 / close_speed_ref, 1)
+    close_near_m: float = 0.06
+    close_speed_ref: float = 0.30 # m/s
     hold_still: float = 0.0       # 成功之后机械臂还在动（关节最大速度 ≥ 0.2 rad/s）时每步加这一项（负数 = 惩罚）
     scale: float = 0.5
 
@@ -144,6 +157,12 @@ class EnvConfig:
     #   （仿真复现里手指缩短 1 cm 会明显降低第一次闭合就夹住的比例）。部署孪生和虚拟实验室不随机（用名义尺寸）
     finger_length_noise_m: float = 0.0
     lift_height_m: float = 0.06
+    # v8：只有"真正夹住"才算抓住（抓起、成功、抓取奖励都用它）：两指接触物体，闭合轴与一对平行面的法线夹角
+    #   ≤ clean_align_deg，且指垫间距和物体在该方向的宽度差 ≤ clean_width_tol_m。
+    #   False（v7 及以前）：两指碰到就算——仿真 032310 里盒子斜卡在全开的两指间也算成功，真机复现不了
+    clean_grasp: bool = False
+    clean_align_deg: float = 20.0
+    clean_width_tol_m: float = 0.010
     downstream_limit_y: float = -0.25
     terminate_on_collision: bool = False
     # 同 GAP-RL get_done：成功后不提前结束，继续拿成功奖励直到回合结束 → "抓住并保持"才最优；

@@ -91,6 +91,9 @@ def physics_overrides(cell: SimWorkcell, args):
     if args.finger_friction is not None:
         for g in ag.finger_geoms:
             m.geom_friction[g][0] = args.finger_friction
+        if args.obj_friction is None:                        # 接触取两者较大值：物体不跟着降，手指就白改了
+            o = env.obj["geom"]
+            m.geom_friction[o][0] = min(m.geom_friction[o][0], args.finger_friction)
     if args.obj_friction is not None:
         m.geom_friction[env.obj["geom"]][0] = args.obj_friction
     if args.obj_mass is not None:
@@ -132,7 +135,7 @@ def main(argv=None):
     ap.add_argument("--depth-noise-mm", type=float, default=0.0)
     ap.add_argument("--edge-dropout", type=float, default=0.0)
     ap.add_argument("--render-min-depth", type=float, default=None, help="仿真相机的真实盲区（感知仍按配置）")
-    ap.add_argument("--finger-friction", type=float, default=None, help="手指滑动摩擦系数（模型 2.0；接触取两者较大值）")
+    ap.add_argument("--finger-friction", type=float, default=None, help="手指滑动摩擦系数；没给 --obj-friction 时物体也降到不高于它（接触取较大值）")
     ap.add_argument("--obj-friction", type=float, default=None, help="物体滑动摩擦系数（模型 1.0）")
     ap.add_argument("--obj-mass", type=float, default=None, help="物体质量 kg（默认按训练范围随机）")
     ap.add_argument("--finger-shift-mm", type=float, default=0.0, help="手指碰撞体沿接近方向往回缩（正 = 手指变短）")

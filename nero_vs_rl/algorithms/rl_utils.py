@@ -78,6 +78,14 @@ class SuccessEvalCallback(BaseCallback):
         self.best = (-1.0, -np.inf)
         self.hist = {k: [] for k in ("timesteps", "results", "successes", "ep_lengths", "belt_speeds")}
 
+    def load_history(self):
+        """Resume: take earlier evaluations and the best so far, so a worse model never overwrites best/."""
+        if self.log_path.exists():
+            z = np.load(self.log_path)
+            self.hist = {k: list(z[k]) for k in self.hist}
+            for succ, rets in zip(self.hist["successes"], self.hist["results"]):
+                self.best = max(self.best, (float(np.mean(succ)), float(np.mean(rets))))
+
     def _on_step(self) -> bool:
         if self.n_calls % self.eval_freq == 0:
             self.evaluate()
