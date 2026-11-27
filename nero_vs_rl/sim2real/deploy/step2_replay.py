@@ -299,7 +299,7 @@ def print_summary(s: dict):
         print(f"没有目标的帧里策略要求闭合并后退的比例 {s['no_target_close_lift_frac'] * 100:.0f}%")
     if "sim_visible_but_unusable_frac" in s:
         print(f"（仿真真值）仿真里能看到抓取、但感知不可用的帧占 {s['sim_visible_but_unusable_frac'] * 100:.0f}%"
-              "（多为物体刚进画面、被画面边缘截断）")
+              "（多为物体刚进画面、一截还在画面外或双目无效带里）")
     if "truth_center_err_mm_median" in s:
         print(f"（仿真真值）位置误差中位数 {s['truth_center_err_mm_median']:.1f} mm，尺寸误差 {s['truth_size_err_mm_median']:.1f} mm，"
               f"类型正确率 {s['truth_type_acc'] * 100:.0f}%")

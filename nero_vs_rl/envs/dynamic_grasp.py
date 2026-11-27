@@ -14,7 +14,7 @@ from gymnasium import spaces
 
 from ..grasp_detection import analytic_grasps as gr
 from ..sensors import camera as cam
-from ..utils import traj_utils
+from ..utils import object_library, traj_utils
 from ..utils.geometry import expmap, inv_T, make_T, mat_to_quat_wxyz, rot_z, symmetric_grasp_rot_dist
 from .base_env import BaseEnv
 from .observation import GraspTracker, assemble_obs
@@ -140,7 +140,13 @@ class DynamicGraspEnv(BaseEnv):
 
         # 物体：随机类型/尺寸/质量 → 解析抓取；轨迹覆盖整个回合
         types = (options or {}).get("object_types", c.objects.types)
-        self.obj_type = str(rng.choice(types))
+        self.lib_entry = None
+        if c.objects.library:                             # 现场工件库：先抽工件，类型跟着工件走
+            lib = object_library.load_library(c.objects.library, list(types))
+            self.lib_entry = lib[int(rng.integers(len(lib)))]
+            self.obj_type = self.lib_entry["type"]
+        else:
+            self.obj_type = str(rng.choice(types))
         self.obj = self.targets[self.obj_type]
         self._setup_object(rng)
         size = self.model.geom_size[self.obj["geom"]]
@@ -197,8 +203,11 @@ class DynamicGraspEnv(BaseEnv):
         gid, bid = self.obj["geom"], self.obj["body"]
         mass = rng.uniform(*oc.mass)
         # 运行时改几何尺寸：同时更新 rbound / aabb（碰撞粗筛用）和惯量
+        lib_half = (None if self.lib_entry is None
+                    else object_library.sample_half(self.lib_entry, rng, oc.library_size_noise))
         if self.obj_type == "box":
-            half = np.array([rng.uniform(*oc.box_half_x), rng.uniform(*oc.box_half_y), rng.uniform(*oc.box_half_z)])
+            half = (lib_half if lib_half is not None else
+                    np.array([rng.uniform(*oc.box_half_x), rng.uniform(*oc.box_half_y), rng.uniform(*oc.box_half_z)]))
             m.geom_size[gid] = half
             m.geom_rbound[gid] = np.linalg.norm(half)
             m.geom_aabb[gid] = np.concatenate([np.zeros(3), half])
@@ -206,7 +215,8 @@ class DynamicGraspEnv(BaseEnv):
             self.obj_half_h = float(half[2])
             self.grasps = gr.box_grasps(half, self.max_width, g.max_tilt_deg)
         else:
-            r, h = rng.uniform(*oc.cyl_radius), rng.uniform(*oc.cyl_half_height)
+            r, h = ((float(lib_half[0]), float(lib_half[2])) if lib_half is not None
+                    else (rng.uniform(*oc.cyl_radius), rng.uniform(*oc.cyl_half_height)))
             m.geom_size[gid] = [r, h, 0]
             m.geom_rbound[gid] = np.hypot(r, h)
             m.geom_aabb[gid] = [0, 0, 0, r, r, h]
@@ -278,6 +288,8 @@ class DynamicGraspEnv(BaseEnv):
     #   visible_rule = full_top（v6 起）：先要求物体顶面轮廓整个在画面内、深度在量程内，否则这一帧算"没看到"
     #   ——和真机感知一致（顶面被画面截断时尺寸量不准，perception.py 不用这一帧）。
     #   手指遮挡（2026-11-25 起真正生效）按顶面露出比例判：≥ min_top_exposed 才算看到；单个抓取不再判遮挡
+    #   2026-11-27 起 default.yaml 取 min_top_exposed = 1.0（顶面完全露出）、并加上左侧双目无效带（camera.stereo_band_px_m）：
+    #   真机感知改成"轮廓碰到大片无效深度或夹爪就不算看到"后，0.5 会让仿真多判 17% 的"看到"；1.0 一致率最高。
     #   （真机感知只要物体检出来，就给出全部抓取）。之前碰撞网格透明，mj_ray 跳过，遮挡一直没起作用。
     #   v5 用的 point 规则只要某个抓取的可见点在画面里就算看到，半截物体也有观测，部署时这部分帧会丢。
     def _observe_grasps(self) -> tuple[np.ndarray, np.ndarray, bool]:

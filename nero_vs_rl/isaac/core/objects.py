@@ -7,6 +7,7 @@ import numpy as np
 import torch
 
 from ...grasp_detection import analytic_grasps as gr
+from ...utils import object_library
 from ...utils.config import EnvConfig
 
 # =============================================================================
@@ -29,8 +30,12 @@ class ObjectSpec:
 def make_specs(cfg: EnvConfig, n: int, seed: int) -> list[ObjectSpec]:
     rng, oc, out = np.random.default_rng(seed), cfg.objects, []
     fr = oc.grip_friction or [1.0, 1.0]
+    lib = object_library.load_library(oc.library, list(oc.types)) if oc.library else None
     for i in range(n):
-        if oc.types[i % len(oc.types)] == "box":
+        if lib is not None:                                                   # 现场工件库：依次轮流，尺寸带抖动（同 MuJoCo 环境）
+            e = lib[i % len(lib)]
+            kind, half = (BOX if e["type"] == "box" else CYL), object_library.sample_half(e, rng, oc.library_size_noise)
+        elif oc.types[i % len(oc.types)] == "box":
             kind, half = BOX, np.array([rng.uniform(*oc.box_half_x), rng.uniform(*oc.box_half_y), rng.uniform(*oc.box_half_z)])
         else:
             r, h = rng.uniform(*oc.cyl_radius), rng.uniform(*oc.cyl_half_height)

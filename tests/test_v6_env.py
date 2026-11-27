@@ -18,7 +18,7 @@ def site_cfg():
 
 def test_site_config_turns_on_v6_options(site_cfg):
     c = site_cfg
-    assert c.grasp_obs.visible_rule == "full_top" and c.finger_clearance_m == 0.016     # v7：对齐真机抓取档
+    assert c.grasp_obs.visible_rule == "full_top" and c.finger_clearance_m == 0.008     # 对齐真机抓取档（2026-11-26 带面统一为 −0.112 后 16 → 8 mm）
     assert c.joint_limit_margin_rad == 0.03 and c.workspace_pullback and c.finger_rail_collision
     assert c.trajectory.lateral_full_belt and c.reward.hold_still < 0
     assert (c.init_tcp_offset_x, c.init_tcp_height) == (-0.08, 0.28)

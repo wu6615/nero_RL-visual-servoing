@@ -196,7 +196,8 @@ def test_seen_or_not_matches_mujoco_env(cfg):
     finally:
         e.close()
     print(f"看到与否一致 {same}/150，看到 {seen}")
-    assert same >= 145 and 60 < seen < 140
+    # seen 只是保证看到 / 没看到两类都有；2026-11-27 起要求顶面完全露出、并有双目无效带，起始看到约 40%（之前约 56%）
+    assert same >= 145 and 30 < seen < 140
 
 
 def test_memory_and_observation_match_numpy(cfg):

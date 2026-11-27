@@ -2,7 +2,8 @@
 
 MuJoCo cameras look along their local -Z with +Y up; image u grows with +X and v
 with -Y.  Depth outside [min_depth, max_depth] is invalid, mimicking the DC1
-stereo blind zone that hides the target during the final approach.
+stereo blind zone that hides the target during the final approach; so is the stereo band on the
+left edge (u < stereo_band_px_m / depth), which the real depth image never fills.
 """
 from __future__ import annotations
 
@@ -22,6 +23,11 @@ def intrinsics(cfg: CameraConfig) -> np.ndarray:
         return np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1.0]])
     f = (cfg.height / 2) / np.tan(np.deg2rad(cfg.fovy_deg) / 2)
     return np.array([[f, 0, cfg.width / 2], [0, f, cfg.height / 2], [0, 0, 1.0]])
+
+
+def stereo_band_u(depth, cfg: CameraConfig):
+    """Left-edge column below which a surface at ``depth`` has no stereo depth (0 when the camera has no band)."""
+    return cfg.stereo_band_px_m / np.maximum(depth, 1e-6)
 
 
 def project(points_world: np.ndarray, cam_pos: np.ndarray, cam_mat: np.ndarray, cfg: CameraConfig):
@@ -44,7 +50,7 @@ def visible_mask(model: mujoco.MjModel, data: mujoco.MjData, cam_id: int, points
     uv, depth = project(points_world, cam_pos, cam_mat, cfg)
     m = cfg.image_margin_px
     mask = ((depth >= cfg.min_depth_m) & (depth <= cfg.max_depth_m)
-            & (uv[:, 0] >= m) & (uv[:, 0] <= cfg.width - m)
+            & (uv[:, 0] >= m) & (uv[:, 0] <= cfg.width - m) & (uv[:, 0] >= stereo_band_u(depth, cfg) + m)
             & (uv[:, 1] >= m) & (uv[:, 1] <= cfg.height - m))
     if cfg.occlusion_check:
         geomid = np.zeros(1, dtype=np.int32)
@@ -73,6 +79,9 @@ class WristRGBD:
         depth = self.renderer.render().copy()
         self.renderer.disable_depth_rendering()
         depth[(depth < self.cfg.min_depth_m) | (depth > self.cfg.max_depth_m)] = 0.0
+        if self.cfg.stereo_band_px_m > 0:                    # 和真机一样，左侧双目无效带没有深度
+            u = np.arange(depth.shape[1])[None, :]
+            depth[u < stereo_band_u(depth, self.cfg)] = 0.0
         return rgb, depth
 
     def close(self):

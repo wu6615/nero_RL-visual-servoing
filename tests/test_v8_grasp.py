@@ -75,7 +75,7 @@ def test_old_configs_keep_old_behaviour():
     assert not c.clean_grasp and c.objects.grip_friction is None
     assert c.reward.close_misalign == c.reward.close_tilt == c.reward.close_moving == 0.0
     c = load_config(TRAIN_CONFIG)[0]
-    assert c.clean_grasp and c.objects.grip_friction == [0.4, 0.9]
+    assert c.clean_grasp and c.objects.grip_friction == [0.45, 0.65]
 
 
 # ---------------------------------------------------------------- 以下要建 MuJoCo 环境（不推进物理）

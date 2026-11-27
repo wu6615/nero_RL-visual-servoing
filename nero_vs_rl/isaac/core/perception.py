@@ -41,7 +41,8 @@ class WristCamera:
         safe = depth.clamp_min(1e-6)
         u, v = self.cx + self.fx * pc[..., 0] / safe, self.cy - self.fy * pc[..., 1] / safe
         m = c.image_margin_px
-        ok = ((depth >= c.min_depth_m) & (depth <= c.max_depth_m) & (u >= m) & (u <= c.width - m) & (v >= m) & (v <= c.height - m))
+        ok = ((depth >= c.min_depth_m) & (depth <= c.max_depth_m) & (u >= m) & (u <= c.width - m) & (v >= m) & (v <= c.height - m)
+              & (u >= c.stereo_band_px_m / safe + m))                 # 左侧双目无效带（同 sensors/camera.py）
         if occlusion and c.occlusion_check:
             ok = ok & ~self.finger_blocks(pts_w, Rg, pg, grip_q)
         return ok

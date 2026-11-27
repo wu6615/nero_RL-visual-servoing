@@ -5,7 +5,7 @@ NERO7 + 腕部 DC1，GAP-RL 思路的 RL 动态抓取。MuJoCo 仿真 + SB3 SAC�
 ## 约定
 
 - 与用户用中文交流；文档、终端提示、报错用中文。模块首行英文 docstring；关键逻辑用 `# 【说明】` 中文块注释（GAP-RL 风格）。
-- 依赖以 `.venv` 和 `requirements.txt` 为准；不要改 NERO 工程（/home/yunfeiwu/adddisk1/nero_conveyor_ros2-main）或其他项目的环境，只读引用。
+- 依赖以 `.venv` 和 `requirements.txt` 为准；不要改 NERO 工程（/home/yunfeiwu/adddisk1/nero_conveyor_ros2-main）或其他项目的环境，只读引用。例外（2026-11-26 用户要求）：给本项目采集示范数据的腕部 DC1 同步录制放在 NERO 工程（`src/nero_core/nero_core/wrist_dc1/`、`tools/run_hardware_continuous.sh --record-wrist-dc1`），改它时遵守 NERO 自己的 CLAUDE.md；转换成 RL 数据的代码留在本项目 `sim2real/demos/`。
 - 新增或修改逻辑配 `tests/` 离线测试（不连相机、CAN）。改了环境要跑脚本基线评估确认仍可解。
 - 现场几何值的出处记在 `docs/现场几何来源.md`；不要为了让测试通过修改实测值。
 

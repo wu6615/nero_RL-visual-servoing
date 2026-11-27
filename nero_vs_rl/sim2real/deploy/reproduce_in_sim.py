@@ -71,11 +71,11 @@ def world_config(cfg, ic: dict, render_min_depth: float | None):
     tr = dataclasses.replace(cfg.trajectory, mode="static", lateral_full_belt=False,
                              lateral=[float(c[0] - cfg.belt_center_x)] * 2, start_along=[float(c[1])] * 2)
     if ic["obj_type"] == "box":
-        ob = dataclasses.replace(cfg.objects, types=["box"], box_half_x=[float(h[0])] * 2, box_half_y=[float(h[1])] * 2,
+        ob = dataclasses.replace(cfg.objects, library=None, types=["box"], box_half_x=[float(h[0])] * 2, box_half_y=[float(h[1])] * 2,
                                  box_half_z=[float(h[2])] * 2)
     else:
         r = float((h[0] + h[1]) / 2)
-        ob = dataclasses.replace(cfg.objects, types=["cylinder"], cyl_radius=[r] * 2, cyl_half_height=[float(h[2])] * 2)
+        ob = dataclasses.replace(cfg.objects, library=None, types=["cylinder"], cyl_radius=[r] * 2, cyl_half_height=[float(h[2])] * 2)
     cam = cfg.camera if render_min_depth is None else dataclasses.replace(cfg.camera, min_depth_m=render_min_depth)
     return dataclasses.replace(cfg, trajectory=tr, objects=ob, camera=cam, belt_surface_z=ic["belt_z"],
                                init_pos_noise_m=0.0, init_yaw_noise_rad=0.0)

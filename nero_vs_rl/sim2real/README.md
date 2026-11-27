@@ -5,6 +5,7 @@
 - **已就绪**：设备驱动 `hardware/`（DC1、NERO 只读反馈、仿真替身）和现场标定 `calibration/`——**操作步骤见 [calibration/README.md](calibration/README.md)**。
 - **离线阶段已写**：`deploy/`（录制 + 离线回放：感知 → 观测 → 策略，机械臂不动）——**操作步骤见 [deploy/README.md](deploy/README.md)**；2026-11-22 第一次真机录制：尺寸误差 ≤ 2.3 mm，相机没被碰动，策略看得到物体时 100% 朝向抓取（详见 deploy/README.md）。
 - **闭环阶段已写、仿真干跑通过、真机未运行**：执行层 `deploy/runtime/`（100 Hz 插值发送、安全层、回合状态机）+ 唯一会发运动指令的 `hardware/nero_control.py` + 仿真虚拟实验室 `hardware/sim_workcell.py`——**操作步骤见 [deploy/闭环阶段.md](deploy/闭环阶段.md)**（step4 仿真干跑 → step5 第一次运动 → step6 跟随不抓 → step7 抓取）。
+- **示范数据（2026-11-26 写好，真机未录）**：NERO 实验台启动抓取时勾“录腕部 DC1”，腕部 DC1 + 关节 + 夹爪 + 执行日志直接录到 `MY_RL_test/real/nero_demos/`（采集在 NERO 工程），`demos/` 把它转成 RL 的观测和动作——**操作步骤见 [demos/README.md](demos/README.md)**。
 
 ## 链路
 

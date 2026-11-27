@@ -194,3 +194,68 @@ def between_episodes(session, q_start: np.ndarray, preview: Preview | None = Non
                 continue
         if c == "":
             return True
+
+
+# =============================================================================
+# 【说明】现场测量程序（step8～10）的公共开头：仿真或真机 → 开机检查 → 执行时输入 yes → 建 LoopSession。
+#   --sim：MuJoCo 虚拟实验室（同 step4/step5 --sim），sim_setup(cell) 摆好场景（例如挪走或放好工件）
+#   真机：不加 --execute 是只读预演（CAN 发送被禁止，整条链路照跑）。
+#   返回的 run.close() 停止发送、关设备；输出目录在 SIM_OUTPUT_DIR/<name>_sim 或 REAL_DATA_DIR 下。
+# =============================================================================
+@dataclass
+class MeasureRun:
+    session: object
+    arm: object
+    camera: object | None
+    clock: object
+    out: object
+    mode: str
+    cell: object | None
+    _closers: list
+
+    def close(self):
+        for f in self._closers:
+            f()
+
+
+def add_measure_args(ap: argparse.ArgumentParser):
+    add_lab_args(ap)
+    ap.add_argument("--sim", action="store_true", help="在 MuJoCo 虚拟实验室里跑（不连硬件）")
+    ap.add_argument("--no-viewer", dest="viewer", action="store_false")
+    ap.add_argument("--out-root", default=None, help="报告目录的上级（默认：真机 REAL_DATA_DIR，--sim 为 SIM_OUTPUT_DIR/<名字>_sim）")
+
+
+def open_measure_run(args, cfg, profile: SafetyProfile, name: str, actions: list[str], need_camera: bool = False,
+                     sim_setup=None, seed: int = 0, sim_cfg=None) -> MeasureRun | None:
+    from pathlib import Path
+    from ... import REAL_DATA_DIR, SIM_OUTPUT_DIR
+    from .runtime.session import LoopSession
+    root = Path(args.out_root) if args.out_root else (SIM_OUTPUT_DIR / f"{name}_sim" if args.sim else REAL_DATA_DIR)
+    out = root / f"{time.strftime('%Y%m%d_%H%M%S')}_{name}"
+    out.mkdir(parents=True, exist_ok=True)
+    if args.sim:
+        from ...envs.viewer import display_available
+        from ..hardware.sim_workcell import SimWorkcell
+        cell = SimWorkcell(sim_cfg or cfg, viewer=args.viewer and display_available())   # sim_cfg：仿真世界（例如按实测工件尺寸）
+        cell.reset(seed=seed, object_types=["box"])
+        (sim_setup or (lambda c: c.park_object()))(cell)
+        arm, camera, clock, belt_z, closers, mode = cell.arm, cell.camera, cell.clock, cfg.belt_surface_z, [cell.close], "sim"
+    else:
+        cell = None
+        dev = open_lab(args, need_camera=need_camera)
+        arm, camera, clock, closers = dev.arm, dev.camera, dev.clock, [dev.close]
+        belt_z, mode = safe_belt_z(cfg, args.config), "execute" if args.execute else "rehearsal"
+        print("\n开机检查：")
+        if preflight(dev, cfg):
+            print("\n检查没通过，未启动。")
+            dev.close()
+            return None
+        if args.execute:
+            if not confirm_motion(profile, actions):
+                print("没有确认，未启动。")
+                dev.close()
+                return None
+            arm.prepare_motion()
+    latency = 0.0 if args.sim else cfg.camera.latency_s
+    session = LoopSession(cfg, profile, arm, camera, clock, belt_z_safe=belt_z, latency_s=latency)
+    return MeasureRun(session, arm, camera, clock, out, mode, cell, [session.close] + closers)

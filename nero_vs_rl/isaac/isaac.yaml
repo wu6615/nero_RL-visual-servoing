@@ -13,7 +13,7 @@ drive:                       # 关节驱动初值 = MuJoCo 的 kp / (kv + 关节
   gripper_stiffness: 300.0
   gripper_damping: 11.5
   gripper_effort: 40.0
-belt_friction: 1.1
+belt_friction: 0.75           # 2026-11-26 用户给出（之前 1.1）；物体材质按 min 合成，带面接触实际取 min(0.75, 物体摩擦)
 finger_friction: 2.0         # 接触按两者较小值（friction_combine_mode=min），实际由物体规格里的摩擦决定
 train:
   total_timesteps: 8000000

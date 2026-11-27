@@ -220,29 +220,43 @@ def test_check_pose_reports_offset_from_sim_home(monkeypatch):
 
 
 def test_latency_estimate_recovers_injected_delay(tmp_path):
-    """Sim recording with the arm moving; frames relabelled 80 ms late -> step3 should find ~80 ms."""
+    """Like the lab procedure (offline stage, segment 4): object at rest, the arm sweeping above it; frames 80 ms late.
+
+    2026-11-27 前用"脚本基线去抓"的录制：感知改成轮廓碰到遮挡就不用之后，机械臂一扑过去物体就进盲区或被手指挡住，
+    每个物体凑不够 MIN_TRACK 帧完整画面；现场测延迟本来就是带停、物体静止、拖着机械臂在上方扫。
+    """
+    import dataclasses
     import json
 
-    from nero_vs_rl.sim2real.deploy import step1_record
+    from nero_vs_rl.envs.dynamic_grasp import DynamicGraspEnv
+    from nero_vs_rl.sim2real.deploy.common import RecordWriter
     from nero_vs_rl.sim2real.deploy.step3_measure_latency import estimate
+    from nero_vs_rl.sim2real.hardware.sim_workcell import sim_depth_intrinsics
 
-    d = tmp_path / "lat"
-    step1_record.main(["--sim", "--sim-motion", "scripted", "--seconds", "30", "--seed", "4", "--out", str(d),
-                       "--no-preview"])
+    L, d = 0.08, tmp_path / "lat"
+    cfg = load_config(TRAIN_CONFIG)[0]
+    still = dataclasses.replace(cfg.trajectory, mode="static", lateral_full_belt=False, lateral=[-0.01, 0.01],
+                                start_along=[0.10, 0.11])                  # 物体静止在相机正下方附近
+    env = DynamicGraspEnv(dataclasses.replace(cfg, trajectory=still, max_steps=400))
+    env.reset(seed=0)
+    (d / "depth").mkdir(parents=True)
+    (d / "color").mkdir()
+    w = RecordWriter(d, dict(source="sim", hz=10.0, camera=dict(depth_intrinsics=sim_depth_intrinsics(cfg))))
+    t, q = [], []
+    try:
+        for _ in range(200):                                              # 20 s：TCP 在上方画 8 字，约 20 cm/s
+            t.append(env.t)
+            q.append(env.agent.arm_qpos(env.data))
+            w.write(env.t + L, q[-1], env.render_wrist_rgbd()[1])          # 帧到达时刻 = 拍摄时刻 + 80 ms
+            env.step(np.r_[0.3 * np.sin(2 * np.pi * env.t / 3.0), 0.3 * np.cos(2 * np.pi * env.t / 2.0), 0, 0, 0, 0, 1.0])
+    finally:
+        w.close()
+        env.close()
+    t, q = np.array(t), np.array(q)
+    np.savez(d / "joints_hist.npz", t=t, q=q)                             # 关节历史 = 真实时刻
     fr = [json.loads(line) for line in (d / "frames.jsonl").read_text().splitlines()]
-    t, off = [], 0.0
-    for f in fr:                                             # 各回合时间从 0 重来：拼成单调时间轴
-        s = f["stamp"] + off
-        if t and s <= t[-1]:
-            off += t[-1] - f["stamp"] + 1.0
-            s = f["stamp"] + off
-        t.append(s)
-    t, q = np.array(t), np.array([f["joints"] for f in fr])
-    np.savez(d / "joints_hist.npz", t=t, q=q)                 # 关节历史 = 真实时刻
-    L = 0.08
-    with open(d / "frames.jsonl", "w") as fo:                 # 帧到达时刻 = 拍摄时刻 + 80 ms
+    with open(d / "frames.jsonl", "w") as fo:                             # 逐帧关节也按到达时刻取（同真机录制）
         for f, tt in zip(fr, t):
-            f["stamp"] = float(tt + L)
             f["joints"] = [float(np.interp(tt + L, t, q[:, j])) for j in range(7)]
             fo.write(json.dumps(f) + "\n")
     r = estimate(d, str(TRAIN_CONFIG))

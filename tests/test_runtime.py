@@ -379,7 +379,8 @@ def test_dry_run_grasp_profile_keeps_fingers_above_belt_and_lifts(cfg):
                 g_open = max(width_to_q(r["width"]), width_to_q(r["grip_cmd"]))      # 同 episode._servo 的判据
                 assert g.gripper_lowest_z(r["q_tgt"], g_open) >= g.belt_z_safe + g.profile.finger_clearance_m - 1e-3
         assert (res.outcome == "lifted") == truth or res.outcome == "stopped"   # 抓起判断和仿真真值一致
-    assert sum(res.outcome == "lifted" for res, _, _ in runs) >= 2
+    # v5 是旧规则下训的；v8 规则（对正、两指合到物体宽度才算夹住）下这 3 个种子只抓起 1 个，参数换回旧值也一样（2026-11-26 对照）
+    assert sum(res.outcome == "lifted" for res, _, _ in runs) >= 1
 
 
 @pytest.mark.skipif(not MODEL.exists(), reason="没有 v5 模型")

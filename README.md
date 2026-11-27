@@ -31,6 +31,7 @@ nero_vs_rl/
   sim2real/calibration/             现场标定 step0～step5（手眼、盲区、带位置）← sim2real/config.py 的手眼常数
   sim2real/deploy/                  部署：step1～3 离线（录制、回放、测延迟），step4～7 闭环（仿真干跑、第一次运动、跟随、抓取）
   sim2real/deploy/runtime/          闭环执行层：100 Hz 发送、安全层、回合状态机、日志 ← sim2real_traj_following.py 主循环
+  sim2real/demos/                   示范数据：NERO 运行目录（执行日志 + 腕部 DC1 录制，采集在 NERO 工程）→ RL 观测和动作
   utils/                            配置 dataclass、SE(3)、轨迹             ← utils/
   examples/                         轨迹可视化、腕部相机画面                 ← examples/
 tests/                              离线测试（不连相机/CAN）
@@ -186,13 +187,14 @@ v6 的任务在 v5 上改了这些，都是为了和真机闭环一致：
 
 ## 数据下载
 
-真机和仿真数据太大（约 1.3 GB），放在 GitHub Release [`data-20261125`](https://github.com/wu6615/nero_RL-visual-servoing/releases/tag/data-20261125)，不进 git：
+真机和仿真数据太大（约 1.5 GB），放在 GitHub Release [`data-20261125`](https://github.com/wu6615/nero_RL-visual-servoing/releases/tag/data-20261125)，不进 git：
 
 | 附件 | 内容 |
 |---|---|
 | `real_data_20261125.tar.gz.part00`～`part05` | 真机：离线录制（2026-11-22）、step5 运动检查、step6 跟随、step7 抓取（2026-11-24）。深度图、彩色图、关节、逐拍日志 |
+| `real_data_20261127.tar.gz.part00`～`part05` | 真机（2026-11-27 追加）：NERO 连续抓取时同步录的腕部 DC1 + 机械臂数据和转换出的示范（`real/nero_demos/`）、RL 等待位来料录制 3 段（Uno 14.4 / 19.4 / 27.9 cm/s） |
 | `simulation_data_20261125.tar.gz.part00`～`part19` | 仿真：v0～v7 的模型、检查点、评估和 TensorBoard 日志，闭环干跑日志，真机回合复现结果 |
-| `SHA256SUMS.txt` | 合并后两个压缩包的校验和 |
+| `SHA256SUMS.txt` | 合并后三个压缩包的校验和 |
 
 每个目录的说明见 [docs/数据清单.md](docs/数据清单.md)。附件按 40 MB 切块，下载后先合并：
 
@@ -201,11 +203,11 @@ gh release download data-20261125 --repo wu6615/nero_RL-visual-servoing
 ```
 
 ```bash
-cat real_data_20261125.tar.gz.part* > real_data_20261125.tar.gz && cat simulation_data_20261125.tar.gz.part* > simulation_data_20261125.tar.gz && sha256sum -c SHA256SUMS.txt
+cat real_data_20261125.tar.gz.part* > real_data_20261125.tar.gz && cat real_data_20261127.tar.gz.part* > real_data_20261127.tar.gz && cat simulation_data_20261125.tar.gz.part* > simulation_data_20261125.tar.gz && sha256sum -c SHA256SUMS.txt
 ```
 
 ```bash
-tar xzf real_data_20261125.tar.gz && tar xzf simulation_data_20261125.tar.gz
+tar xzf real_data_20261125.tar.gz && tar xzf real_data_20261127.tar.gz && tar xzf simulation_data_20261125.tar.gz
 ```
 
 标定原始图片（`calib_data/`，约 220 MB）没有上传，标定结果在 `nero_vs_rl/algorithms/config/dc1_site.yaml`。

@@ -23,6 +23,10 @@ class CameraConfig:
     min_depth_m: float = 0.15         # 占位值：双目近距盲区，需现场实测
     max_depth_m: float = 1.2
     image_margin_px: int = 8
+    # 左侧双目无效带：像素列 u < stereo_band_px_m / 深度(m) 的点没有深度（双目视差 = f·B/z，左图最左边这一条在右图里找不到匹配）。
+    #   DC1 实测 19.0 px·m（2026-11-27，12 段真机录制、约 8000 行的中位，10/90 分位 18.4 / 19.6）：深度 0.3 m 时约 63 px。
+    #   0 = 没有（仿真默认）。真机感知不用它：真机深度图本来就是空的，perception.py 按"大片无效深度"判遮挡
+    stereo_band_px_m: float = 0.0
     occlusion_check: bool = True
     # 真机：相机帧比关节反馈晚多少秒（帧的曝光时刻 ≈ 到达时刻 − latency_s），部署时按这个时刻取关节角。
     # 由 sim2real/deploy/step3_measure_latency.py --apply 写入；仿真不用。
@@ -41,6 +45,10 @@ class ObjectConfig:
     # 手指与物体之间的滑动摩擦系数，每回合随机（设计值，没有实测）。None = 用模型文件里的值（手指 2.0、物体 1.0）。
     #   MuJoCo 接触取两者较大值，所以要同时改手指和物体；模型里的有效值 2.0 能把没对正的物体"粘"起来
     grip_friction: list[float] | None = None
+    # 现场工件库（assets/objects/ 下的文件名或绝对路径；None = 按上面的尺寸范围随机）。
+    #   有库时每回合从库里抽一个工件（按 types 过滤），尺寸取库里的拟合值 × (1 ± library_size_noise)，上面的范围不用
+    library: str | None = None
+    library_size_noise: float = 0.03
 
 
 # 现场带速范围：2026-11-22 部署离线回放测得三档 3.6 / 9.6 / 13.3 cm/s（docs/现场几何来源.md），留余量取 15 cm/s。
@@ -84,7 +92,9 @@ class GraspObsConfig:
     #             （和真机感知一致：顶面被画面边缘截断时尺寸量不准，deploy/perception.py 不用这一帧）
     visible_rule: str = "point"
     # full_top 规则下的手指遮挡：顶面露出比例低于此值算没看到。2026-11-25 用渲染深度 + 真机感知标出来的：
-    #   露出过半时感知仍可用，位置误差中位 ≤ 6 mm；再少就时有时无、误差 1 cm 以上
+    #   露出过半时感知仍可用，位置误差中位 ≤ 6 mm；再少就时有时无、误差 1 cm 以上。
+    #   2026-11-27 default.yaml 改成 1.0：真机上露出一部分的物体中心会系统性偏移（NERO 示范数据里测速因此偏低 12～30%），
+    #   perception.py 改成轮廓碰到遮挡就不用这一帧，仿真跟着要求顶面完全露出
     min_top_exposed: float = 0.5
 
 
@@ -122,10 +132,10 @@ class EnvConfig:
     max_joint_speed_rad_s: float | list[float] = 1.5
     gripper_max_q: float = 0.05        # gripper_joint1 行程；指垫间距 = 0.008 + 2q
     # 带的位姿（基座系）。来源见 docs/现场几何来源.md：
-    #   belt_surface_z  实测带面平面 c 项（belt_direction_20261113_single_pass.json）
+    #   belt_surface_z  腕部相机实测（标定 step5，−0.112）；2026-11-26 前用 NERO 工程的独立实测 −0.12
     #   belt_center_x   估计值：现场等待位 TCP 的 x（standby_joint_rad 正解），带宽未实测
     belt_center_x: float = -0.40
-    belt_surface_z: float = -0.12
+    belt_surface_z: float = -0.112
     belt_half_width: float = 0.15      # 占位：带宽未实测
     belt_half_length: float = 1.0
     belt_direction_sign: float = -1.0  # 物体沿 sign*Y 运动；现场 belt_direction_base≈(-0.05,-1,0)
